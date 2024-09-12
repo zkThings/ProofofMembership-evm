@@ -1,0 +1,41 @@
+{
+  "name": "zksdk",
+  "version": "0.0.1",
+  "description": "poc zksdk",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run test",
+    "dev": "nodemon ./src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "tba"
+  },
+  "keywords": [
+    "zkp",
+    "zksdk",
+    "zero",
+    "knowledge",
+    "proofs",
+    "privacy",
+    "token",
+    "stealth"
+  ],
+  "author": "0xsayd",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.4.0",
+    "nodemon": "^3.1.4",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.6.3",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@types/snarkjs": "^0.7.8",
+    "circomlibjs": "^0.1.7",
+    "ethers": "^6.13.2",
+    "ffjavascript": "^0.3.0",
+    "merkletreejs": "^0.4.0",
+    "snarkjs": "^0.7.4"
+  }
+}
