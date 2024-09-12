@@ -39,7 +39,7 @@ class ZkMerkle {
     }
 
     // Main function to generate Merkle tree creation proof
-    async generateProof(inputObject: InputObject): Promise<ProofResult> {
+    async generateRootHash(inputObject: InputObject): Promise<ProofResult> {
         const leaves = Object.values(inputObject).map(item =>
             typeof item === 'string' ? this.nameToNumber(item).toString() : item
         );
@@ -90,7 +90,7 @@ class ZkMerkle {
 }
 
 // Example usage
-const zkObject = new ZkMerkle();
+const zksdk = new ZkMerkle();
 
 const vcData = {
     name: 'John Doe',
@@ -102,10 +102,10 @@ const vcData = {
 async function main() {
     try {
         // 1. Generate proof for Merkle Tree creation
-        const { proof: treeProof, publicSignals: treeSignals } = await zkObject.generateProof(vcData);
+        const { proof: treeProof, publicSignals: treeSignals } = await zksdk.generateRootHash(vcData);
 
         // 2. Verify Merkle Tree creation proof off-chain
-        const isTreeVerified = await zkObject.verifyTreeCreation(treeProof, treeSignals);
+        const isTreeVerified = await zksdk.verifyTreeCreation(treeProof, treeSignals);
         if (!isTreeVerified) {
             console.error('Tree verification failed.');
             return;
@@ -113,7 +113,8 @@ async function main() {
 
         // 3. Generate proof for a specific leaf in the Merkle Tree
         const root = treeSignals[0]; // Assuming the root is the first public signal
-        const { proof: leafProof, publicSignals: leafSignals } = await zkObject.generateProofOfLeaf(vcData, root, '50828');
+        const { proof: leafProof, publicSignals: leafSignals } = await zksdk.generateProofOfLeaf(vcData, root, '50828');
+console.log(leafSignals,leafProof);
 
         // (Optional) Verify the leaf proof off-chain if needed
         // const isLeafVerified = await zkObject.verifyProof(leafProof, leafSignals, 'path/to/leaf_verification_key.json');
