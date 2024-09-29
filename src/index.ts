@@ -2,9 +2,11 @@ import { groth16, Groth16Proof, zKey } from 'snarkjs';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
+import { createHash } from 'crypto';
 
 // Promisify fs.readFile for better async/await handling
 const readFileAsync = promisify(fs.readFile);
+const writeFileAsync = promisify(fs.writeFile);
 
 interface InputObject {
     [key: string]: any;
@@ -17,17 +19,18 @@ interface ProofResult {
 
 class ZkMerkle {
     /**
-     * Converts a string to a numerical hash using a simple hashing algorithm.
-     * @param data - The string data to convert.
-     * @returns The numerical hash of the input data
-     * TO DO : ADD A BETTER HASHING FUNCTION.
+     * Hashes input data using SHA-256 and returns a numeric string within the field size.
+     * @param data - The string data to hash.
+     * @returns The numeric string representation of the hash.
      */
-    private nameToNumber(data: string): number {
-        let hash = 0;
-        for (let i = 0; i < data.length; i++) {
-            hash = (hash * 31 + data.charCodeAt(i)) >>> 0; // Use unsigned right shift for 32-bit integer
-        }
-        return hash;
+    private hashData(data: string): string {
+        const hashHex = createHash('sha256').update(data).digest('hex');
+        const hashBigInt = BigInt('0x' + hashHex);
+        // Ensure the hash fits within the field size of BN128 curve
+        const fieldPrime = BigInt(
+            '21888242871839275222246405745257275088548364400416034343698204186575808495617'
+        );
+        return (hashBigInt % fieldPrime).toString();
     }
 
     /**
@@ -38,7 +41,7 @@ class ZkMerkle {
     async generateRootHash(inputObject: InputObject): Promise<ProofResult> {
         try {
             const leaves = Object.values(inputObject).map(item =>
-                typeof item === 'string' ? this.nameToNumber(item).toString() : item.toString()
+                this.hashData(item.toString())
             );
 
             const wasmPath = path.resolve(__dirname, 'treeMaker', 'Tree.wasm');
@@ -63,17 +66,23 @@ class ZkMerkle {
      * @param root - The root hash of the Merkle Tree.
      * @returns An object containing the proof and public signals.
      */
-    async generateProofOfLeaf(inputObject: InputObject, root: string): Promise<ProofResult> {
+    async generateProofOfLeaf(
+        inputObject: InputObject,
+        root: string,
+        unhashedLeaf:string
+    ): Promise<ProofResult> {
         try {
             const leaves = Object.values(inputObject).map(item =>
-                typeof item === 'string' ? this.nameToNumber(item).toString() : item.toString()
+                this.hashData(item.toString())
             );
 
             const wasmPath = path.resolve(__dirname, 'merkleTreeProof', 'MerkleTreeProof.wasm');
             const zkeyPath = path.resolve(__dirname, 'merkleTreeProof', 'MerkleTreeProof_final.zkey');
 
+            const leaf = this.hashData(unhashedLeaf) // Assuming we're proving the first leaf
+
             const { proof, publicSignals } = await groth16.fullProve(
-                { leaves, root, leaf: leaves[0] },
+                { leaves, root, leaf },
                 wasmPath,
                 zkeyPath
             );
@@ -86,66 +95,43 @@ class ZkMerkle {
     }
 
     /**
-     * Verifies a Merkle Tree creation proof off-chain.
+     * Verifies a proof against a verification key.
      * @param proof - The proof to verify.
      * @param publicSignals - The public signals associated with the proof.
+     * @param verificationKeyPath - The path to the verification key JSON file.
      * @returns A boolean indicating whether the proof is valid.
      */
-    async verifyTreeCreation(proof: Groth16Proof, publicSignals: string[]): Promise<boolean> {
+    async verifyProof(
+        proof: Groth16Proof,
+        publicSignals: string[],
+        verificationKeyPath: string
+    ): Promise<boolean> {
         try {
-            const verificationFile = path.resolve(__dirname, 'treeMaker', 'verification_key.json');
-            const key = JSON.parse(await readFileAsync(verificationFile, 'utf-8'));
-
+            const key = JSON.parse(await readFileAsync(verificationKeyPath, 'utf-8'));
             const isValid = await groth16.verify(key, publicSignals, proof);
-            console.log('Tree creation verified:', isValid);
+            console.log('Proof verification result:', isValid);
 
             return isValid;
         } catch (error) {
-            console.error('Error verifying tree creation proof:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Verifies a leaf inclusion proof off-chain.
-     * @param proof - The proof to verify.
-     * @param publicSignals - The public signals associated with the proof.
-     * @returns A boolean indicating whether the proof is valid.
-     */
-    async verifyLeaf(proof: Groth16Proof, publicSignals: string[]): Promise<boolean> {
-        try {
-            const verificationFile = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
-            const key = JSON.parse(await readFileAsync(verificationFile, 'utf-8'));
-
-            const isValid = await groth16.verify(key, publicSignals, proof);
-            console.log('Leaf inclusion verified:', isValid);
-
-            return isValid;
-        } catch (error) {
-            console.error('Error verifying leaf proof:', error);
+            console.error('Error verifying proof:', error);
             throw error;
         }
     }
 
     /**
      * Exports a Solidity verifier contract for on-chain verification.
-     * @returns A promise that resolves when the verifier contract is generated.
+     * @param zkeyPath - The path to the .zkey file.
+     * @param outputPath - The output file path for the generated Solidity contract.
      */
-    async exportOnChainVerifier(): Promise<void> {
-        try {
-            const zkeyPath = path.resolve(__dirname, 'treeMaker', 'Tree_final.zkey');
-            const templatePath = path.resolve(__dirname, 'treeMaker', 'verifier_groth16.sol.ejs');
-
-            const groth16Template = await readFileAsync(templatePath, 'utf-8');
-            const templates = { groth16: groth16Template };
-
-            const solidity = await zKey.exportSolidityVerifier(zkeyPath, templates, console);
-            fs.writeFileSync('TreeVerifier.sol', solidity, 'utf-8');
-            console.log('Verifier contract generated.');
-        } catch (error) {
-            console.error('Error exporting on-chain verifier:', error);
-            throw error;
-        }
+    async exportOnChainVerifier(zkeyPath: string, outputPath: string): Promise<void> {
+        // try {
+        //     const solidityCode = await zKey.exportSolidityVerifier(zkeyPath);
+        //     await writeFileAsync(outputPath, solidityCode, 'utf-8');
+        //     console.log('Verifier contract generated at:', outputPath);
+        // } catch (error) {
+        //     console.error('Error exporting on-chain verifier:', error);
+        //     throw error;
+        // }
     }
 }
 
@@ -165,7 +151,8 @@ class ZkMerkle {
         const { proof: treeProof, publicSignals: treeSignals } = await zkMerkle.generateRootHash(vcData);
 
         // Verify the Merkle Tree creation off-chain
-        const isTreeVerified = await zkMerkle.verifyTreeCreation(treeProof, treeSignals);
+        const treeVerificationKeyPath = path.resolve(__dirname, 'treeMaker', 'verification_key.json');
+        const isTreeVerified = await zkMerkle.verifyProof(treeProof, treeSignals, treeVerificationKeyPath);
         if (!isTreeVerified) {
             console.error('Tree verification failed.');
             return;
@@ -173,10 +160,11 @@ class ZkMerkle {
 
         // Generate proof for a specific leaf in the Merkle Tree
         const root = treeSignals[0]; // Assuming the root is the first public signal
-        const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root);
+        const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root,vcData.name);
 
         // Verify the leaf inclusion off-chain
-        const isLeafVerified = await zkMerkle.verifyLeaf(leafProof, leafSignals);
+        const leafVerificationKeyPath = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
+        const isLeafVerified = await zkMerkle.verifyProof(leafProof, leafSignals, leafVerificationKeyPath);
         if (!isLeafVerified) {
             console.error('Leaf verification failed.');
             return;
