@@ -52,7 +52,7 @@ class ZkMerkle {
         const zkeyPath = path.resolve(__dirname, 'merkleTreeProof', 'MerkleTreeProof_final.zkey');
 
         const { proof, publicSignals } = await groth16.fullProve(
-            { leaves, root, leaf: '50828' },
+            { leaves, root, leaf: leaves[0] },
             wasmPath,
             zkeyPath
         );
@@ -61,6 +61,7 @@ class ZkMerkle {
 
         const verificationFile = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
         const key = JSON.parse(fs.readFileSync(verificationFile, 'utf-8'));
+
 
         const verificationResult = await groth16.verify(key, publicSignals, proof);
         console.log('Verification Result:', verificationResult);
@@ -79,8 +80,6 @@ class ZkMerkle {
         return isValid;
     }
 
-
-
     // Verify the Merkle Tree creation proof off-chain
     async verifyLeaf(proof: Groth16Proof, publicSignals: string[]): Promise<boolean> {
         const verificationFile = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
@@ -91,12 +90,6 @@ class ZkMerkle {
 
         return isValid;
     }
-
-
-
-
-
-
 
     // Export Solidity verifier for on-chain use
     async exportOnChainVerifier(): Promise<void> {
@@ -135,7 +128,13 @@ async function main() {
 
     // 3. Generate proof for a specific leaf in the Merkle Tree
     const root = treeSignals[0]; // Assuming the root is the first public signal
+
     const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root);
+    
+    // const proofLeaf = await  zkMerkle.verifyLeaf(leafProof,leafSignals)
+
+    // console.log(proofLeaf);
+    
 }
 
 main();
