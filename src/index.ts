@@ -1,4 +1,4 @@
-import { groth16, Groth16Proof, zKey } from 'snarkjs';
+import { groth16, Groth16Proof, zKey , powersOfTau } from 'snarkjs';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
@@ -133,6 +133,59 @@ class ZkMerkle {
         //     throw error;
         // }
     }
+    /**
+   * Performs the Powers of Tau ceremony and generates the final zkey.
+   * This is a crucial step in setting up zk-SNARK parameters securely.
+   * @param ptauName - Name for the Powers of Tau file.
+   * @param circuitName - Name of the circuit.
+   * @param entropy - Optional entropy for randomness.
+   * @param numContributions - Number of contributions to the ceremony.
+   */
+  async performPowersOfTauCeremony(
+    ptauName: string,
+    circuitName: string,
+    entropy?: string,
+    numContributions = 10
+  ): Promise<void> {
+    try {
+      const ptauPath = path.join(__dirname, `${ptauName}.ptau`);
+      const circuitWasmPath = path.join(__dirname, `${circuitName}.wasm`);
+      const circuitR1csPath = path.join(__dirname, `${circuitName}.r1cs`);
+      const zkeyPath = path.join(__dirname, `${circuitName}_final.zkey`);
+
+      // Start a new Powers of Tau ceremony
+      await powersOfTau.start(12, ptauPath, console);
+
+      // Contribute to the ceremony multiple times
+      for (let i = 1; i <= numContributions; i++) {
+        await powersOfTau.contribute(ptauPath, ptauPath, `Contribution ${i}`, entropy);
+      }
+
+      // Prepare for phase 2
+      await powersOfTau.preparePhase2(ptauPath, ptauPath);
+
+      // Generate the final zkey
+      await zKey.newZKey(circuitR1csPath, ptauPath, zkeyPath);
+
+      // Contribute to phase 2 of the ceremony
+      const zkeyContributionPath = path.join(__dirname, `${circuitName}_contribution.zkey`);
+      await zKey.contribute(zkeyPath, zkeyContributionPath, "Contributor's name", entropy);
+
+      // Verify the final zkey
+      const verificationKey = await zKey.exportVerificationKey(zkeyContributionPath);
+      await writeFileAsync(
+        path.join(__dirname, `${circuitName}_verification_key.json`),
+        JSON.stringify(verificationKey),
+        'utf8'
+      );
+
+      console.log('Powers of Tau ceremony completed and final zkey generated.');
+    } catch (error) {
+      console.error('Error during Powers of Tau ceremony:', error);
+      throw error;
+    }
+  }
+
 }
 
 // Example usage
