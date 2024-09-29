@@ -1,15 +1,15 @@
-import { groth16, Groth16Proof, zKey, powersOfTau} from 'snarkjs';
+import { groth16, Groth16Proof, zKey, powersOfTau } from 'snarkjs';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import { createHash } from 'crypto';
 
-// Promisify fs.readFile for better async/await handling
+// Promisify fs functions for better async/await handling
 const readFileAsync = promisify(fs.readFile);
 const writeFileAsync = promisify(fs.writeFile);
 
 interface InputObject {
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 interface ProofResult {
@@ -19,19 +19,20 @@ interface ProofResult {
 
 class ZkMerkle {
 
+    private static readonly FIELD_PRIME = BigInt(
+        '21888242871839275222246405745257275088548364400416034343698204186575808495617'
+    );
+
     /**
      * Hashes input data using SHA-256 and returns a numeric string within the field size.
      * @param data - The string data to hash.
      * @returns The numeric string representation of the hash.
      */
+
     private hashData(data: string): string {
         const hashHex = createHash('sha256').update(data).digest('hex');
-        const hashBigInt = BigInt('0x' + hashHex);
-        // Ensure the hash fits within the field size of BN128 curve
-        const fieldPrime = BigInt(
-            '21888242871839275222246405745257275088548364400416034343698204186575808495617'
-        );
-        return (hashBigInt % fieldPrime).toString();
+        const hashBigInt = BigInt(`0x${hashHex}`);
+        return (hashBigInt % ZkMerkle.FIELD_PRIME).toString();
     }
 
     /**
@@ -39,10 +40,11 @@ class ZkMerkle {
      * @param inputObject - The input data for the Merkle Tree leaves.
      * @returns An object containing the proof and public signals.
      */
+
     async generateRootHash(inputObject: InputObject): Promise<ProofResult> {
         try {
-            const leaves = Object.values(inputObject).map(item =>
-                this.hashData(item.toString())
+            const leaves = Object.values(inputObject).map((item) =>
+                this.hashData(String(item))
             );
 
             const wasmPath = path.resolve(__dirname, 'treeMaker', 'Tree.wasm');
@@ -65,22 +67,32 @@ class ZkMerkle {
      * Generates a proof for checking if a specific leaf is part of the Merkle Tree.
      * @param inputObject - The input data for the Merkle Tree leaves.
      * @param root - The root hash of the Merkle Tree.
+     * @param unhashedLeaf - The unhashed leaf to prove.
      * @returns An object containing the proof and public signals.
      */
+
     async generateProofOfLeaf(
         inputObject: InputObject,
         root: string,
-        unhashedLeaf:string
+        unhashedLeaf: string
     ): Promise<ProofResult> {
         try {
-            const leaves = Object.values(inputObject).map(item =>
-                this.hashData(item.toString())
+            const leaves = Object.values(inputObject).map((item) =>
+                this.hashData(String(item))
             );
 
-            const wasmPath = path.resolve(__dirname, 'merkleTreeProof', 'MerkleTreeProof.wasm');
-            const zkeyPath = path.resolve(__dirname, 'merkleTreeProof', 'MerkleTreeProof_final.zkey');
+            const wasmPath = path.resolve(
+                __dirname,
+                'merkleTreeProof',
+                'MerkleTreeProof.wasm'
+            );
+            const zkeyPath = path.resolve(
+                __dirname,
+                'merkleTreeProof',
+                'MerkleTreeProof_final.zkey'
+            );
 
-            const leaf = this.hashData(unhashedLeaf) // Assuming we're proving the first leaf
+            const leaf = this.hashData(unhashedLeaf);
 
             const { proof, publicSignals } = await groth16.fullProve(
                 { leaves, root, leaf },
@@ -102,6 +114,7 @@ class ZkMerkle {
      * @param verificationKeyPath - The path to the verification key JSON file.
      * @returns A boolean indicating whether the proof is valid.
      */
+
     async verifyProof(
         proof: Groth16Proof,
         publicSignals: string[],
@@ -124,15 +137,9 @@ class ZkMerkle {
      * @param zkeyPath - The path to the .zkey file.
      * @param outputPath - The output file path for the generated Solidity contract.
      */
+
     async exportOnChainVerifier(zkeyPath: string, outputPath: string): Promise<void> {
-        // try {
-        //     const solidityCode = await zKey.exportSolidityVerifier(zkeyPath);
-        //     await writeFileAsync(outputPath, solidityCode, 'utf-8');
-        //     console.log('Verifier contract generated at:', outputPath);
-        // } catch (error) {
-        //     console.error('Error exporting on-chain verifier:', error);
-        //     throw error;
-        // }
+        // Implementation commented out
     }
 
     /**
@@ -172,6 +179,7 @@ class ZkMerkle {
      * @param zkeyOutputPath - The desired output path for the generated .zkey file.
      * @param entropy - Optional entropy string for randomness.
      */
+    
     async generateZKey(
         circuitR1csPath: string,
         ptauPath: string,
@@ -207,66 +215,63 @@ class ZkMerkle {
 }
 
 //@@@@  Example usage MAKE PROOFS AND TREES@@@@
-// (async () => {
-//     const zkMerkle = new ZkMerkle();
-
-//     const vcData = {
-//         name: 'John Doe',
-//         age: '30',
-//         country: '392',
-//         test: '1',
-//     };
-
-//     try {
-//         // Generate proof for the tree creation
-//         const { proof: treeProof, publicSignals: treeSignals } = await zkMerkle.generateRootHash(vcData);
-
-//         // Verify the Merkle Tree creation off-chain
-//         const treeVerificationKeyPath = path.resolve(__dirname, 'treeMaker', 'verification_key.json');
-//         const isTreeVerified = await zkMerkle.verifyProof(treeProof, treeSignals, treeVerificationKeyPath);
-//         if (!isTreeVerified) {
-//             console.error('Tree verification failed.');
-//             return;
-//         }
-
-//         // Generate proof for a specific leaf in the Merkle Tree
-//         const root = treeSignals[0]; // Assuming the root is the first public signal
-//         const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root,vcData.name);
-
-//         // Verify the leaf inclusion off-chain
-//         const leafVerificationKeyPath = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
-//         const isLeafVerified = await zkMerkle.verifyProof(leafProof, leafSignals, leafVerificationKeyPath);
-//         if (!isLeafVerified) {
-//             console.error('Leaf verification failed.');
-//             return;
-//         }
-
-//         console.log('All proofs verified successfully.');
-//     } catch (error) {
-//         console.error('An error occurred during the proof generation or verification process:', error);
-//     }
-// })();
-
-
-
-
-// @@@ Example usage power of tau 
-
 (async () => {
     const zkMerkle = new ZkMerkle();
 
-    // Define paths
-    // const ptauPath = path.resolve(__dirname, 'pot12_final.ptau');
-    // const circuitDir = path.resolve(__dirname, 'treeMaker');
-    // const circuitName = 'Tree';
-    // const circuitR1csPath = path.join(circuitDir, `${circuitName}.r1cs`);
-    // const zkeyOutputPath = path.join(circuitDir, `${circuitName}_final.zkey`);
+    const vcData = {
+        name: 'John Doe',
+        age: '30',
+        country: '392',
+        test: '1',
+    };
 
-    // // Generate Powers of Tau file
-    // await zkMerkle.generatePowersOfTau(ptauPath, 12, 'your secure entropy here');
+    try {
+        // Generate proof for the tree creation
+        const { proof: treeProof, publicSignals: treeSignals } = await zkMerkle.generateRootHash(vcData);
 
-    // // Generate .zkey file
-    // await zkMerkle.generateZKey(circuitR1csPath, ptauPath, zkeyOutputPath, 'your secure entropy here');
+        // Verify the Merkle Tree creation off-chain
+        const treeVerificationKeyPath = path.resolve(__dirname, 'treeMaker', 'verification_key.json');
+        const isTreeVerified = await zkMerkle.verifyProof(treeProof, treeSignals, treeVerificationKeyPath);
+        if (!isTreeVerified) {
+            console.error('Tree verification failed.');
+            return;
+        }
 
-    // Now you have the .ptau and .zkey files needed for proof generation and verification
+        // Generate proof for a specific leaf in the Merkle Tree
+        const root = treeSignals[0]; // Assuming the root is the first public signal
+        const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root,vcData.name);
+
+        // Verify the leaf inclusion off-chain
+        const leafVerificationKeyPath = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
+        const isLeafVerified = await zkMerkle.verifyProof(leafProof, leafSignals, leafVerificationKeyPath);
+        if (!isLeafVerified) {
+            console.error('Leaf verification failed.');
+            return;
+        }
+
+        console.log('All proofs verified successfully.');
+    } catch (error) {
+        console.error('An error occurred during the proof generation or verification process:', error);
+    }
 })();
+
+
+// @@@ Example usage power of tau 
+// (async () => {
+//     const zkMerkle = new ZkMerkle();
+
+//     // Define paths
+//     const ptauPath = path.resolve(__dirname, 'pot12_final.ptau');
+//     const circuitDir = path.resolve(__dirname, 'treeMaker');
+//     const circuitName = 'Tree';
+//     const circuitR1csPath = path.join(circuitDir, `${circuitName}.r1cs`);
+//     const zkeyOutputPath = path.join(circuitDir, `${circuitName}_final.zkey`);
+
+//     // Generate Powers of Tau file
+//     await zkMerkle.generatePowersOfTau(ptauPath, 12, 'your secure entropy here');
+
+//     // Generate .zkey file
+//     await zkMerkle.generateZKey(circuitR1csPath, ptauPath, zkeyOutputPath, 'your secure entropy here');
+
+//     // Now you have the .ptau and .zkey files needed for proof generation and verification
+// })();
