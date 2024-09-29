@@ -1,4 +1,4 @@
-import { groth16, Groth16Proof, zKey , powersOfTau } from 'snarkjs';
+import { groth16, Groth16Proof, zKey, powersOfTau} from 'snarkjs';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
@@ -18,6 +18,7 @@ interface ProofResult {
 }
 
 class ZkMerkle {
+
     /**
      * Hashes input data using SHA-256 and returns a numeric string within the field size.
      * @param data - The string data to hash.
@@ -133,98 +134,139 @@ class ZkMerkle {
         //     throw error;
         // }
     }
+
     /**
-   * Performs the Powers of Tau ceremony and generates the final zkey.
-   * This is a crucial step in setting up zk-SNARK parameters securely.
-   * @param ptauName - Name for the Powers of Tau file.
-   * @param circuitName - Name of the circuit.
-   * @param entropy - Optional entropy for randomness.
-   * @param numContributions - Number of contributions to the ceremony.
-   */
-  async performPowersOfTauCeremony(
-    ptauName: string,
-    circuitName: string,
-    entropy?: string,
-    numContributions = 10
-  ): Promise<void> {
-    try {
-      const ptauPath = path.join(__dirname, `${ptauName}.ptau`);
-      const circuitWasmPath = path.join(__dirname, `${circuitName}.wasm`);
-      const circuitR1csPath = path.join(__dirname, `${circuitName}.r1cs`);
-      const zkeyPath = path.join(__dirname, `${circuitName}_final.zkey`);
+     * Generates the Powers of Tau file using snarkjs.
+     * @param ptauOutputPath - The desired output path for the Powers of Tau file.
+     * @param power - The power parameter (e.g., 12 for pot12_final.ptau).
+     * @param entropy - Optional entropy string for randomness.
+     */
+    async generatePowersOfTau(ptauOutputPath: string, power: number = 12, entropy?: string): Promise<void> {
+        try {
+            // Step 1: Create a new accumulator
+            await powersOfTau.newAccumulator('bn128', power, ptauOutputPath);
 
-      // Start a new Powers of Tau ceremony
-      await powersOfTau.start(12, ptauPath, console);
+            // Step 2: Contribute to the Powers of Tau ceremony
+            const tempPtauPath = ptauOutputPath.replace('.ptau', '_temp.ptau');
+            await powersOfTau.contribute(
+                ptauOutputPath,
+                tempPtauPath,
+                'First contribution',
+                entropy || 'some random entropy'
+            );
 
-      // Contribute to the ceremony multiple times
-      for (let i = 1; i <= numContributions; i++) {
-        await powersOfTau.contribute(ptauPath, ptauPath, `Contribution ${i}`, entropy);
-      }
+            // Replace the original ptau file with the contributed one
+            fs.renameSync(tempPtauPath, ptauOutputPath);
 
-      // Prepare for phase 2
-      await powersOfTau.preparePhase2(ptauPath, ptauPath);
-
-      // Generate the final zkey
-      await zKey.newZKey(circuitR1csPath, ptauPath, zkeyPath);
-
-      // Contribute to phase 2 of the ceremony
-      const zkeyContributionPath = path.join(__dirname, `${circuitName}_contribution.zkey`);
-      await zKey.contribute(zkeyPath, zkeyContributionPath, "Contributor's name", entropy);
-
-      // Verify the final zkey
-      const verificationKey = await zKey.exportVerificationKey(zkeyContributionPath);
-      await writeFileAsync(
-        path.join(__dirname, `${circuitName}_verification_key.json`),
-        JSON.stringify(verificationKey),
-        'utf8'
-      );
-
-      console.log('Powers of Tau ceremony completed and final zkey generated.');
-    } catch (error) {
-      console.error('Error during Powers of Tau ceremony:', error);
-      throw error;
+            console.log('Powers of Tau ceremony completed. File generated at:', ptauOutputPath);
+        } catch (error) {
+            console.error('Error generating Powers of Tau file:', error);
+            throw error;
+        }
     }
-  }
 
+    /**
+     * Generates the .zkey file using snarkjs.
+     * @param circuitR1csPath - The file path to the circuit's R1CS file.
+     * @param ptauPath - The file path to the Powers of Tau file.
+     * @param zkeyOutputPath - The desired output path for the generated .zkey file.
+     * @param entropy - Optional entropy string for randomness.
+     */
+    async generateZKey(
+        circuitR1csPath: string,
+        ptauPath: string,
+        zkeyOutputPath: string,
+        entropy?: string
+    ): Promise<void> {
+        try {
+            // Step 1: Generate a new zkey from the R1CS and ptau files
+            await zKey.newZKey(circuitR1csPath, ptauPath, zkeyOutputPath);
+
+            // Step 2: Contribute to the ceremony (optional but recommended)
+            const zkeyTempPath = zkeyOutputPath.replace('.zkey', '_temp.zkey');
+            await zKey.contribute(
+                zkeyOutputPath,
+                zkeyTempPath,
+                'Contributor Name',
+                entropy || 'some random entropy'
+            );
+
+            // Replace the original zkey with the contributed one
+            fs.renameSync(zkeyTempPath, zkeyOutputPath);
+
+            // Step 3: Export the verification key
+            const vKeyPath = zkeyOutputPath.replace('.zkey', '_verification_key.json');
+            await zKey.exportVerificationKey(zkeyOutputPath, vKeyPath);
+
+            console.log('ZKey file and verification key generated.');
+        } catch (error) {
+            console.error('Error generating .zkey file:', error);
+            throw error;
+        }
+    }
 }
 
-// Example usage
+//@@@@  Example usage MAKE PROOFS AND TREES@@@@
+// (async () => {
+//     const zkMerkle = new ZkMerkle();
+
+//     const vcData = {
+//         name: 'John Doe',
+//         age: '30',
+//         country: '392',
+//         test: '1',
+//     };
+
+//     try {
+//         // Generate proof for the tree creation
+//         const { proof: treeProof, publicSignals: treeSignals } = await zkMerkle.generateRootHash(vcData);
+
+//         // Verify the Merkle Tree creation off-chain
+//         const treeVerificationKeyPath = path.resolve(__dirname, 'treeMaker', 'verification_key.json');
+//         const isTreeVerified = await zkMerkle.verifyProof(treeProof, treeSignals, treeVerificationKeyPath);
+//         if (!isTreeVerified) {
+//             console.error('Tree verification failed.');
+//             return;
+//         }
+
+//         // Generate proof for a specific leaf in the Merkle Tree
+//         const root = treeSignals[0]; // Assuming the root is the first public signal
+//         const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root,vcData.name);
+
+//         // Verify the leaf inclusion off-chain
+//         const leafVerificationKeyPath = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
+//         const isLeafVerified = await zkMerkle.verifyProof(leafProof, leafSignals, leafVerificationKeyPath);
+//         if (!isLeafVerified) {
+//             console.error('Leaf verification failed.');
+//             return;
+//         }
+
+//         console.log('All proofs verified successfully.');
+//     } catch (error) {
+//         console.error('An error occurred during the proof generation or verification process:', error);
+//     }
+// })();
+
+
+
+
+// @@@ Example usage power of tau 
+
 (async () => {
     const zkMerkle = new ZkMerkle();
 
-    const vcData = {
-        name: 'John Doe',
-        age: '30',
-        country: '392',
-        test: '1',
-    };
+    // Define paths
+    // const ptauPath = path.resolve(__dirname, 'pot12_final.ptau');
+    // const circuitDir = path.resolve(__dirname, 'treeMaker');
+    // const circuitName = 'Tree';
+    // const circuitR1csPath = path.join(circuitDir, `${circuitName}.r1cs`);
+    // const zkeyOutputPath = path.join(circuitDir, `${circuitName}_final.zkey`);
 
-    try {
-        // Generate proof for the tree creation
-        const { proof: treeProof, publicSignals: treeSignals } = await zkMerkle.generateRootHash(vcData);
+    // // Generate Powers of Tau file
+    // await zkMerkle.generatePowersOfTau(ptauPath, 12, 'your secure entropy here');
 
-        // Verify the Merkle Tree creation off-chain
-        const treeVerificationKeyPath = path.resolve(__dirname, 'treeMaker', 'verification_key.json');
-        const isTreeVerified = await zkMerkle.verifyProof(treeProof, treeSignals, treeVerificationKeyPath);
-        if (!isTreeVerified) {
-            console.error('Tree verification failed.');
-            return;
-        }
+    // // Generate .zkey file
+    // await zkMerkle.generateZKey(circuitR1csPath, ptauPath, zkeyOutputPath, 'your secure entropy here');
 
-        // Generate proof for a specific leaf in the Merkle Tree
-        const root = treeSignals[0]; // Assuming the root is the first public signal
-        const { proof: leafProof, publicSignals: leafSignals } = await zkMerkle.generateProofOfLeaf(vcData, root,vcData.name);
-
-        // Verify the leaf inclusion off-chain
-        const leafVerificationKeyPath = path.resolve(__dirname, 'merkleTreeProof', 'verification_key.json');
-        const isLeafVerified = await zkMerkle.verifyProof(leafProof, leafSignals, leafVerificationKeyPath);
-        if (!isLeafVerified) {
-            console.error('Leaf verification failed.');
-            return;
-        }
-
-        console.log('All proofs verified successfully.');
-    } catch (error) {
-        console.error('An error occurred during the proof generation or verification process:', error);
-    }
+    // Now you have the .ptau and .zkey files needed for proof generation and verification
 })();
