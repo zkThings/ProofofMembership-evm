@@ -38,3 +38,13 @@ coverage/
 # Miscellaneous
 *.tgz
 *.zip
+
+
+# Generated files from index.ts script
+src/powersOfTau12.ptau
+src/powersOfTau12_final.ptau
+src/circuit_0000.zkey
+src/circuit_0001.zkey
+src/merkleTreeProof_final.zkey
+src/temp_final.zkey
+src/merkleTreeProof_verification_key.json
