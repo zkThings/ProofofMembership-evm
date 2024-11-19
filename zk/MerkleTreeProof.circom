@@ -1,6 +1,6 @@
 pragma circom 2.0.0;
 
-include "lib/mimcsponge.circom";
+include "../node_modules/circomlib/circuits/mimcsponge.circom";
 
 template HashLeftRight() {
     signal input left;

@@ -3,6 +3,12 @@ import path from "path";
 import fs from "fs";
 const { buildMimcSponge } = require("circomlibjs");
 
+interface ProofOutput {
+  proof: any;
+  publicSignals: string[];
+  root: string;
+}
+
 export class MerkleProver {
   private mimcSponge: any;
 
@@ -24,45 +30,36 @@ export class MerkleProver {
   private hashLeaf(leaf: string): string {
     if (!this.mimcSponge) throw new Error("MiMC not initialized");
     const input = this.toField(leaf);
-    const hash = this.mimcSponge.multiHash([input], 0, 1);
-    return this.mimcSponge.F.toString(hash[0]);
+    const hash = this.mimcSponge.multiHash([input], 0);
+    return this.mimcSponge.F.toString(hash);
   }
 
   private hashPair(left: string, right: string): string {
     if (!this.mimcSponge) throw new Error("MiMC not initialized");
     const leftInput = this.toField(left);
     const rightInput = this.toField(right);
-    const hash = this.mimcSponge.multiHash([leftInput, rightInput], 0, 1);
-    return this.mimcSponge.F.toString(hash[0]);
+    const hash = this.mimcSponge.multiHash([leftInput, rightInput], 0);
+    return this.mimcSponge.F.toString(hash);
   }
 
-  async generateMerkleProof(leaf: string, allLeaves: string[]) {
+  async generateMerkleProof(leaf: string, allLeaves: string[]): Promise<ProofOutput> {
     await this.initMimc();
-
-    console.log("Initial values:", { leaf, allLeaves });
 
     const hashedLeaf = this.hashLeaf(leaf);
     let currentLevel = allLeaves.map(l => this.hashLeaf(l));
 
-    console.log("Hashed values:", { hashedLeaf, currentLevel });
+    let currentIndex = currentLevel.findIndex(l => l === hashedLeaf);
+    if (currentIndex === -1) throw new Error("Leaf not found in tree");
 
-    const leafIndex = currentLevel.indexOf(hashedLeaf);
-    if (leafIndex === -1) throw new Error("Leaf not found");
-
-    const pathElements = [];
-    const pathIndices = [];
-    let currentIndex = leafIndex;
+    const pathElements: string[] = [];
+    const pathIndices: number[] = [];
 
     while (currentLevel.length > 1) {
       const isLeft = currentIndex % 2 === 0;
-      const pairIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-
-      if (pairIndex < currentLevel.length) {
-        pathElements.push(currentLevel[pairIndex]);
-      } else {
-        pathElements.push(currentLevel[currentIndex]);
-      }
+      const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
       
+      const sibling = currentLevel[siblingIndex] ?? currentLevel[currentIndex];
+      pathElements.push(sibling);
       pathIndices.push(isLeft ? 0 : 1);
 
       currentLevel = Array.from({ length: Math.ceil(currentLevel.length / 2) }, (_, i) => {
@@ -76,13 +73,6 @@ export class MerkleProver {
 
     const root = currentLevel[0];
 
-    console.log("Merkle tree data:", {
-      hashedLeaf,
-      pathElements,
-      pathIndices,
-      root
-    });
-
     const input = {
       leaf: hashedLeaf,
       pathElements,
@@ -90,15 +80,20 @@ export class MerkleProver {
       root
     };
 
-    const wasmPath = path.resolve(__dirname, '../zk/MerkleTreeProof_js/MerkleTreeProof.wasm');
-    const zkeyPath = path.resolve(__dirname, '../zk/MerkleProof_0000.zkey');
+    const wasmPath = path.join(__dirname, 'merkleTreeProof', 'MerkleTreeProof.wasm');
+    const zkeyPath = path.join(__dirname, 'merkleTreeProof', 'MerkleTreeProof_final.zkey');
 
-    const { proof, publicSignals } = await groth16.fullProve(input, wasmPath, zkeyPath);
+    const { proof, publicSignals } = await groth16.fullProve(
+      input,
+      wasmPath,
+      zkeyPath
+    );
+
     return { proof, publicSignals, root };
   }
 
-  async verifyProof(proof: any, publicSignals: any): Promise<boolean> {
-    const vKeyPath = path.resolve(__dirname, '../zk/verification_key.json');
+  async verifyProof(proof: any, publicSignals: string[]): Promise<boolean> {
+    const vKeyPath = path.join(__dirname, 'merkleTreeProof', 'verification_key.json');
     const vKey = JSON.parse(fs.readFileSync(vKeyPath, 'utf-8'));
     return await groth16.verify(vKey, publicSignals, proof);
   }
