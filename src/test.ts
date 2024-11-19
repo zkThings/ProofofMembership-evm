@@ -1,22 +1,23 @@
 import { MerkleProver } from './index';
+import { TrustedSetup } from './TrustedSetup';
 import path from 'path';
 
+async function setupCircuit() {
+  console.log("🔧 Starting trusted setup...");
+  const setup = new TrustedSetup();
+  const result = await setup.setup("MerkleTreeProof");
+  console.log("✅ Setup completed. Generated files:", result);
+  return result;
+}
+
 async function main() {
-  const baseDir = path.resolve(__dirname, '../zk');
   const prover = new MerkleProver();
   
   try {
-    console.log("🔧 Setting up circuit...");
+    // Run trusted setup first
+    // await setupCircuit();
 
-    // const setup = await prover.setupCircuit("MerkleTreeProof", {
-    //   powersOfTauSize: 14,
-    //   numIterationsExp: 12,
-    //   name: "Test Setup"
-    // });
-    
-    // console.log("\n✅ Setup completed. Generated files:");
-    // console.log(setup);
-
+    // Test proof generation and verification
     const leaves = ["test", "b", "c", "d"];
     console.log("\n🌿 Generating proof for leaf ...");
     const { proof, publicSignals, root } = await prover.generateMerkleProof("test", leaves);

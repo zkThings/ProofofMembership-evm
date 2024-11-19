@@ -1,110 +1,134 @@
-// import { powersOfTau, zKey } from 'snarkjs';
-// import path from 'path';
-// import fs from 'fs';
-// import { promisify } from 'util';
-// import crypto from 'crypto';
-// import { SetupConfig, SetupResult } from './types';
-// const { getCurveFromName } = require('ffjavascript');
+import { powersOfTau, zKey } from 'snarkjs';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import { execSync } from 'child_process';
+const { getCurveFromName } = require('ffjavascript');
 
-// const writeFileAsync = promisify(fs.writeFile);
-// const readFileAsync = promisify(fs.readFile);
-// const copyFileAsync = promisify(fs.copyFile);
+export interface SetupResult {
+  verificationKey: string;
+  solidityVerifier: string;
+  zkeyPath: string;
+  wasmPath: string;
+}
 
-// export class TrustedSetup {
-//   private baseDir: string;
-//   private potDir: string;
-//   private zkeyDir: string;
-//   private circuitDir: string;
+export class TrustedSetup {
+  private readonly POWER_OF_TAU = 12;
+  private readonly PROJECT_ROOT: string;
+  private readonly BUILD_DIR: string;
+  private readonly TEMP_DIR: string;
+  private readonly OUTPUT_DIR: string;
 
-//   constructor(baseDir: string) {
-//     this.baseDir = baseDir;
-//     this.potDir = path.join(baseDir, 'pot');
-//     this.zkeyDir = path.join(baseDir, 'zkey');
-//     this.circuitDir = path.join(baseDir, 'circuit');
-//     this.createDirectories();
-//   }
+  constructor() {
+    this.PROJECT_ROOT = path.resolve(__dirname, '..');
+    this.BUILD_DIR = path.join(this.PROJECT_ROOT, 'build');
+    this.TEMP_DIR = path.join(this.PROJECT_ROOT, 'temp');
+    this.OUTPUT_DIR = path.join(__dirname, 'merkleTreeProof');
 
-//   private createDirectories() {
-//     [this.potDir, this.zkeyDir, this.circuitDir].forEach(dir => {
-//       if (!fs.existsSync(dir)) {
-//         fs.mkdirSync(dir, { recursive: true });
-//       }
-//     });
-//   }
+    [this.BUILD_DIR, this.TEMP_DIR, this.OUTPUT_DIR].forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+  }
 
-//   private async generateRandomness(): Promise<Uint8Array> {
-//     return crypto.randomBytes(32);
-//   }
+  private generateRandomness(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
 
-//   async performSetup(circuitName: string, config: SetupConfig = {}): Promise<SetupResult> {
-//     const {
-//       powersOfTauSize = 14,
-//       numIterationsExp = 10,
-//       name = "Contribution"
-//     } = config;
+  private logFileInfo(filePath: string, description: string) {
+    console.log(`${description} path:`, filePath);
+    if (fs.existsSync(filePath)) {
+      console.log(`${description} exists:`, true);
+      console.log(`${description} size:`, fs.statSync(filePath).size, 'bytes');
+    } else {
+      console.log(`${description} does not exist`);
+    }
+  }
 
-//     const r1csPath = path.join(this.circuitDir, `${circuitName}.r1cs`);
-//     const wasmPath = path.join(this.circuitDir, `${circuitName}.wasm`);
-//     const wasmDestPath = path.join(this.circuitDir, `${circuitName}.wasm`);
-//     const ptauPath = path.join(this.potDir, `powersOfTau${powersOfTauSize}_0000.ptau`);
-//     const ptauFinalPath = path.join(this.potDir, `powersOfTau${powersOfTauSize}_0001.ptau`);
-//     const zkeyInitPath = path.join(this.zkeyDir, `${circuitName}_0000.zkey`);
-//     const zkeyContribPath = path.join(this.zkeyDir, `${circuitName}_0001.zkey`);
-//     const zkeyFinalPath = path.join(this.zkeyDir, `${circuitName}_final.zkey`);
-//     const vkeyPath = path.join(this.circuitDir, "verification_key.json");
-//     const verifierPath = path.join(this.circuitDir, "verifier.sol");
+  private cleanup() {
+    [this.BUILD_DIR, this.TEMP_DIR].forEach(dir => {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
 
-//     try {
-//       console.log("🚀 Starting trusted setup...");
-//       console.log("📦 Phase 1: Powers of Tau ceremony");
+  async setup(circuitName: string): Promise<SetupResult> {
+    try {
+      console.log("🚀 Starting trusted setup...");
+
+      const ptauPath = path.join(this.TEMP_DIR, `pot${this.POWER_OF_TAU}.ptau`);
+      const ptauContribPath = path.join(this.TEMP_DIR, `pot${this.POWER_OF_TAU}_contrib.ptau`);
+      const ptauBeaconPath = path.join(this.TEMP_DIR, `pot${this.POWER_OF_TAU}_beacon.ptau`);
+      const ptauFinalPath = path.join(this.TEMP_DIR, `pot${this.POWER_OF_TAU}_final.ptau`);
+      const r1csPath = path.join(this.OUTPUT_DIR, `${circuitName}.r1cs`);
+      const wasmPath = path.join(this.OUTPUT_DIR, `${circuitName}.wasm`);
+      const zkeyInitPath = path.join(this.TEMP_DIR, `${circuitName}_0000.zkey`);
+      const zkeyContribPath = path.join(this.TEMP_DIR, `${circuitName}_0001.zkey`);
+      const zkeyPath = path.join(this.OUTPUT_DIR, `${circuitName}_final.zkey`);
+      const vkeyPath = path.join(this.OUTPUT_DIR, 'verification_key.json');
+      const verifierPath = path.join(this.OUTPUT_DIR, 'verifier.sol');
+
+      this.logFileInfo(r1csPath, 'R1CS file');
+      this.logFileInfo(wasmPath, 'WASM file');
+
+      if (!fs.existsSync(r1csPath)) {
+        throw new Error(`R1CS file not found at: ${r1csPath}`);
+      }
+      if (!fs.existsSync(wasmPath)) {
+        throw new Error(`WASM file not found at: ${wasmPath}`);
+      }
+
+      console.log("📦 Phase 1: Powers of Tau ceremony");
+      const curve = await getCurveFromName("bn128");
+      await powersOfTau.newAccumulator(curve, this.POWER_OF_TAU, ptauPath);
+      await powersOfTau.contribute(ptauPath, ptauContribPath, "First Contribution", this.generateRandomness());
+      await powersOfTau.beacon(ptauContribPath, ptauBeaconPath, "Beacon", this.generateRandomness(), 10);
+      await powersOfTau.preparePhase2(ptauBeaconPath, ptauFinalPath);
       
-//       if (!fs.existsSync(ptauPath)) {
-//         const curve = await getCurveFromName("bn128");
-//         await powersOfTau.newAccumulator(curve, powersOfTauSize, ptauPath);
-//         const entropy = await this.generateRandomness();
-//         await powersOfTau.contribute(ptauPath, ptauFinalPath, name, entropy);
-//       }
+      execSync(`snarkjs powersoftau verify ${ptauFinalPath}`, { stdio: 'inherit' });
+      this.logFileInfo(ptauFinalPath, 'Final PTAU file');
 
-//       if (!fs.existsSync(r1csPath)) {
-//         throw new Error(`R1CS file not found at: ${r1csPath}`);
-//       }
+      console.log("📦 Phase 2: Circuit-specific setup");
+      await zKey.newZKey(r1csPath, ptauFinalPath, zkeyInitPath);
+      this.logFileInfo(zkeyInitPath, 'Initial zkey file');
 
-//       console.log("📦 Phase 2: Circuit-specific setup");
-//       await zKey.newZKey(r1csPath, ptauFinalPath, zkeyInitPath);
+      console.log("📦 Phase 3: Contributing to ceremony");
+      await zKey.contribute(zkeyInitPath, zkeyContribPath, "First Contribution", this.generateRandomness());
+      this.logFileInfo(zkeyContribPath, 'Contributed zkey file');
 
-//       console.log("📦 Phase 3: Contribute to ceremony");
-//       const entropy1 = await this.generateRandomness();
-//       await zKey.contribute(zkeyInitPath, zkeyContribPath, name, entropy1);
+      console.log("📦 Phase 4: Generating final zkey");
+      await zKey.beacon(zkeyContribPath, zkeyPath, "Final Beacon", this.generateRandomness(), 10);
+      this.logFileInfo(zkeyPath, 'Final zkey file');
 
-//       console.log("📦 Phase 4: Apply beacon");
-//       const entropy2 = await this.generateRandomness();
-//       await zKey.beacon(zkeyContribPath, zkeyFinalPath, "Final Beacon", entropy2, numIterationsExp);
+      console.log("🔍 Verifying final zkey");
+      execSync(`snarkjs zkey verify ${r1csPath} ${ptauFinalPath} ${zkeyPath}`, { stdio: 'inherit' });
 
-//       console.log("📄 Generating verification files");
-//       const vKey = await zKey.exportVerificationKey(zkeyFinalPath);
-//       await writeFileAsync(vkeyPath, JSON.stringify(vKey, null, 2));
+      console.log("📄 Generating verification files");
+      const vKey = await zKey.exportVerificationKey(zkeyPath);
+      fs.writeFileSync(vkeyPath, JSON.stringify(vKey, null, 2));
 
-//       const templatesDir = path.join(__dirname, '../templates');
-//       const templates = {
-//         groth16: await readFileAsync(path.join(templatesDir, 'verifier_groth16.sol.ejs'), 'utf8')
-//       };
+      const templates = {
+        groth16: fs.readFileSync(
+          path.join(this.PROJECT_ROOT, 'templates', 'verifier_groth16.sol.ejs'),
+          'utf8'
+        )
+      };
+      const solidityVerifier = await zKey.exportSolidityVerifier(zkeyPath, templates);
+      fs.writeFileSync(verifierPath, solidityVerifier);
 
-//       const solidityVerifier = await zKey.exportSolidityVerifier(zkeyFinalPath, templates);
-//       await writeFileAsync(verifierPath, solidityVerifier);
+      this.cleanup();
 
-//       if (fs.existsSync(wasmPath)) {
-//         await copyFileAsync(wasmPath, wasmDestPath);
-//       }
-
-//       return {
-//         verificationKey: vkeyPath,
-//         solidityVerifier: verifierPath,
-//         zkeyPath: zkeyFinalPath,
-//         wasmPath: wasmDestPath
-//       };
-//     } catch (error) {
-//       console.error("❌ Error in trusted setup:", error);
-//       throw error;
-//     }
-//   }
-// }
+      return {
+        verificationKey: vkeyPath,
+        solidityVerifier: verifierPath,
+        zkeyPath: zkeyPath,
+        wasmPath: wasmPath
+      };
+    } catch (error) {
+      console.error("❌ Error in trusted setup:", error);
+      throw error;
+    }
+  }
+}
