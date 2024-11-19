@@ -24,6 +24,17 @@ export class MerkleProver {
 
   private toField(input: string | number | bigint): bigint {
     const FIELD_SIZE = BigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    
+    if (typeof input === 'string' && input.length === 1) {
+      // Convert single character to its ASCII code
+      return BigInt(input.charCodeAt(0)) % FIELD_SIZE;
+    }
+    
+    if (typeof input === 'string' && !/^\d+$/.test(input)) {
+      // For non-numeric strings, convert to ASCII codes and combine
+      return BigInt(input.split('').map(c => c.charCodeAt(0)).join('')) % FIELD_SIZE;
+    }
+    
     return BigInt(input) % FIELD_SIZE;
   }
 

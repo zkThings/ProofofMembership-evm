@@ -17,9 +17,9 @@ async function main() {
     // console.log("\n✅ Setup completed. Generated files:");
     // console.log(setup);
 
-    const leaves = ["1", "2", "3", "4"];
-    console.log("\n🌿 Generating proof for leaf '1'...");
-    const { proof, publicSignals, root } = await prover.generateMerkleProof("1", leaves);
+    const leaves = ["test", "b", "c", "d"];
+    console.log("\n🌿 Generating proof for leaf ...");
+    const { proof, publicSignals, root } = await prover.generateMerkleProof("test", leaves);
     
     console.log("\n🌳 Root:", root);
     console.log("\n🔍 Verifying proof...");
