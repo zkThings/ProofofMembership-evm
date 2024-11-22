@@ -1,6 +1,6 @@
 pragma circom 2.0.0;
 
-include "../node_modules/circomlib/circuits/mimcsponge.circom";
+include "mimcsponge.circom";
 
 template HashLeftRight() {
     signal input left;
@@ -34,4 +34,5 @@ template MerkleProof(levels) {
     root === hashes[levels];
 }
 
-component main {public [leaf, root]} = MerkleProof(2);  // Changed to 2 levels
+// Replace DEPTH with the desired depth during code generation
+component main {public [leaf, root]} = MerkleProof(DEPTH);
