@@ -1,4 +1,4 @@
-import { groth16 } from 'snarkjs';
+import { groth16 ,zKey} from 'snarkjs';
 import path from 'path';
 import fs from 'fs';
 const { buildMimcSponge } = require('circomlibjs');
@@ -130,6 +130,8 @@ export class MerkleProver {
     return { proof, publicSignals, root };
   }
 
+  
+
   public async verifyProof(proof: any, publicSignals: string[], depth: number): Promise<boolean> {
     const vKeyPath = path.join(
       __dirname,
@@ -141,5 +143,28 @@ export class MerkleProver {
     }
     const vKey = JSON.parse(fs.readFileSync(vKeyPath, 'utf-8'));
     return await groth16.verify(vKey, publicSignals, proof);
+  }
+
+  public async exportVerifierContract(depth: number): Promise<string> {
+    if (depth > this.MAX_SUPPORTED_DEPTH) {
+      throw new Error(`Depth ${depth} exceeds maximum supported depth of ${this.MAX_SUPPORTED_DEPTH}`);
+    }
+  
+    const circuitName = `MerkleTreeProof_${depth}`;
+    const zkeyPath = path.join(__dirname, 'merkleTreeProof', `${circuitName}_final.zkey`);
+  
+    if (!fs.existsSync(zkeyPath)) {
+      throw new Error(`ZKey file for depth ${depth} not found at ${zkeyPath}`);
+    }
+  
+    const templates = {
+      groth16: fs.readFileSync(
+        path.join(__dirname, '..', 'templates', 'verifier_groth16.sol.ejs'),
+        'utf8'
+      )
+    };
+  
+    const solidityVerifier = await zKey.exportSolidityVerifier(zkeyPath, templates);
+    return solidityVerifier;
   }
 }

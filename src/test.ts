@@ -9,7 +9,7 @@ async function main() {
     const leaves = ['a', 'b', 'c', 'd', 'e'];
 
     // The leaf you want to prove
-    const leafToProve = '3';
+    const leafToProve = 'a';
 
     console.log('\n🌿 Generating proof for leaf:', leafToProve);
     const { proof, publicSignals, root } = await prover.generateMerkleProof(leafToProve, leaves);
