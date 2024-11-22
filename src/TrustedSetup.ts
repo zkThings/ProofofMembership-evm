@@ -13,7 +13,7 @@ export interface SetupResult {
 }
 
 export class TrustedSetup {
-  private readonly POWER_OF_TAU = 12;
+  private readonly POWER_OF_TAU = 15;
   private readonly PROJECT_ROOT: string;
   private readonly BUILD_DIR: string;
   private readonly TEMP_DIR: string;
