@@ -1,4 +1,4 @@
-import { MerkleProver } from './index';
+import { MerkleProver } from '../index';
 import fs from 'fs';
 import path from 'path';
 

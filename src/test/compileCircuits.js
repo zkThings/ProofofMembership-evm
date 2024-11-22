@@ -1,3 +1,7 @@
+
+
+//this file expecting to be in /src - so upon use move it a level higher in dir or fix the pathes
+
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");

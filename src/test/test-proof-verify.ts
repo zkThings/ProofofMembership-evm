@@ -1,4 +1,4 @@
-import { MerkleProver } from './index';
+import { MerkleProver } from '../index';
 import path from 'path';
 
 async function main() {

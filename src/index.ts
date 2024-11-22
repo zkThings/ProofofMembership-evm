@@ -115,6 +115,7 @@ export class MerkleProver {
       `${circuitName}_js`,
       `${circuitName}.wasm`
     );
+    
     const zkeyPath = path.join(__dirname, 'merkleTreeProof', `${circuitName}_final.zkey`);
 
     // Check if files exist

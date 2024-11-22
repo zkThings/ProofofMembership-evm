@@ -1,3 +1,6 @@
+//this file expecting to be in /src - so upon use move it a level higher in dir or fix the pathes
+
+
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';

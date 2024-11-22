@@ -103,6 +103,9 @@ export class PowerOfTau {
    * @param exportDir - Directory where the PTAU file will be exported.
    */
   public exportPtau(exportDir: string): string {
+    if (!fs.existsSync(exportDir)) {
+      fs.mkdirSync(exportDir, { recursive: true });
+    }
     const lastPtau = this.getLastPtauFile();
     const destPath = path.join(exportDir, path.basename(lastPtau));
     fs.copyFileSync(lastPtau, destPath);
@@ -162,15 +165,15 @@ export class PowerOfTau {
   /**
    * Performs Phase 2 (Circuit-Specific Setup) for a given circuit.
    * @param circuitName - Name of the circuit (e.g., 'MerkleTreeProof_2').
-   * @param finalPtauPath - Path to the finalized .ptau file from Phase 1.
    */
-  public async setupCircuit(circuitName: string, finalPtauPath: string): Promise<SetupResult> {
+  public async setupCircuit(circuitName: string): Promise<SetupResult> {
     const circuitDir = path.join(__dirname, 'merkleTreeProof');
     const r1csPath = path.join(circuitDir, `${circuitName}.r1cs`);
     const wasmPath = path.join(circuitDir, `${circuitName}.wasm`);
+    const finalPtauPath = path.join(this.POT_DIR, `pot${this.POWER_OF_TAU}_final.ptau`);
     const zkeyInitPath = path.join(this.POT_DIR, `${circuitName}_0000.zkey`);
     const zkeyContribPath = path.join(this.POT_DIR, `${circuitName}_0001.zkey`);
-    const zkeyPath = path.join(circuitDir, `${circuitName}_final.zkey`);
+    const zkeyFinalPath = path.join(circuitDir, `${circuitName}_final.zkey`);
     const vkeyPath = path.join(circuitDir, `${circuitName}_verification_key.json`);
     const verifierPath = path.join(circuitDir, `verifier_${circuitName}.sol`);
 
@@ -201,13 +204,13 @@ export class PowerOfTau {
 
     // Phase 2: Finalize zkey
     console.log('📦 Phase 2: Finalizing zkey');
-    await zKey.beacon(zkeyContribPath, zkeyPath, `${circuitName} Final Beacon`, this.generateRandomness(), 10);
-    this.logFileInfo(zkeyPath, 'Final zkey file');
+    await zKey.beacon(zkeyContribPath, zkeyFinalPath, `${circuitName} Final Beacon`, this.generateRandomness(), 10);
+    this.logFileInfo(zkeyFinalPath, 'Final zkey file');
 
     // Verify zkey
     console.log('🔍 Verifying final zkey');
     try {
-      execSync(`snarkjs zkey verify ${r1csPath} ${finalPtauPath} ${zkeyPath}`, { stdio: 'inherit' });
+      execSync(`snarkjs zkey verify ${r1csPath} ${finalPtauPath} ${zkeyFinalPath}`, { stdio: 'inherit' });
       console.log('✅ Final zkey verified successfully.');
     } catch (error) {
       console.error('❌ Final zkey verification failed:', error);
@@ -216,19 +219,59 @@ export class PowerOfTau {
 
     // Generate verification key and Solidity verifier
     console.log('📄 Generating verification key and Solidity verifier');
-    const vKey = await zKey.exportVerificationKey(zkeyPath);
+    const vKey = await zKey.exportVerificationKey(zkeyFinalPath);
     fs.writeFileSync(vkeyPath, JSON.stringify(vKey, null, 2));
 
-    const verifierCode = await zKey.exportSolidityVerifier(zkeyPath);
+    const verifierCode = await zKey.exportSolidityVerifier(zkeyFinalPath);
     fs.writeFileSync(verifierPath, verifierCode);
     console.log('✅ Verification key and Solidity verifier generated.');
 
     return {
       verificationKey: vkeyPath,
       solidityVerifier: verifierPath,
-      zkeyPath: zkeyPath,
+      zkeyPath: zkeyFinalPath,
       wasmPath: wasmPath,
     };
+  }
+
+  /**
+   * Makes a contribution to Phase 2 of the ceremony for a specific circuit.
+   * @param circuitName - Name of the circuit.
+   * @param name - Contributor's name or identifier.
+   */
+  public async contributePhase2(circuitName: string, name: string = 'Phase2 Contribution'): Promise<string> {
+    const circuitDir = path.join(__dirname, 'merkleTreeProof');
+    const zkeyFinalPath = path.join(circuitDir, `${circuitName}_final.zkey`);
+    const zkeyContribPath = path.join(this.POT_DIR, `${circuitName}_0002.zkey`);
+
+    if (!fs.existsSync(zkeyFinalPath)) {
+      throw new Error(`Final zkey file not found at: ${zkeyFinalPath}. Please setup the circuit first.`);
+    }
+
+    console.log(`\n📥 Making Phase 2 contribution for ${circuitName} (${name})...`);
+    await zKey.contribute(
+      zkeyFinalPath,
+      zkeyContribPath,
+      name,
+      this.generateRandomness()
+    );
+    console.log(`✅ Phase 2 contribution for ${circuitName} completed.`);
+    this.logFileInfo(zkeyContribPath, 'Phase 2 Contributed zkey file');
+
+    return zkeyContribPath;
+  }
+
+  /**
+   * Finalizes the setup for a specific circuit after Phase 2 contributions.
+   * @param circuitName - Name of the circuit.
+   */
+  public async finalizeCircuitSetup(circuitName: string): Promise<void> {
+    const circuitDir = path.join(__dirname, 'merkleTreeProof');
+    const zkeyFinalPath = path.join(circuitDir, `${circuitName}_final.zkey`);
+
+    console.log(`\n🏁 Finalizing Phase 2 setup for circuit: ${circuitName}...`);
+    // Any additional finalization steps can be added here
+    console.log(`✅ Phase 2 setup for ${circuitName} finalized.`);
   }
 
   /**
