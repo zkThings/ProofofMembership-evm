@@ -1,24 +1,20 @@
-import { MerkleProver } from '../index';
-import path from 'path';
+import { ZkMerkle } from '../ZkMerkle';  // Changed from '../index' to direct importimport path from 'path';
 
 async function main() {
-  const prover = new MerkleProver();
+  const prover = new ZkMerkle();
 
   try {
     // Define your leaves
     const leaves = ['a', 'b', 'c', 'd', 'e'];
-
-    // The leaf you want to prove
     const leafToProve = 'a';
 
     console.log('\n🌿 Generating proof for leaf:', leafToProve);
     const { proof, publicSignals, root } = await prover.generateMerkleProof(leafToProve, leaves);
 
     console.log('\n🌳 Merkle Root:', root);
-    console.log('\n🧾 Proof:', proof);
+    console.log('\n🧾 Proof:', JSON.stringify(proof, null, 2));
     console.log('\n📢 Public Signals:', publicSignals);
 
-    // Calculate the depth
     const depth = Math.ceil(Math.log2(leaves.length));
 
     console.log('\n🔍 Verifying proof...');
@@ -27,10 +23,11 @@ async function main() {
     console.log(`\n✅ Proof verification: ${isValid ? 'SUCCESS' : 'FAILED'}`);
   } catch (error) {
     console.error('\n❌ Error:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message);
-    }
+    process.exit(1);
   }
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error('\n❌ Fatal error:', error);
+  process.exit(1);
+});
