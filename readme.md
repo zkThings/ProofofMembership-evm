@@ -55,19 +55,3 @@ For full documentation and examples, visit [docs.zksdk.org](https://docs.zksdk.o
 MIT
 ```
 
-This setup:
-1. Places the package under the @zksdk organization
-2. Positions it as part of a larger ecosystem
-3. Maintains simple, clear documentation
-4. Suggests a unified toolkit approach
-5. Emphasizes the open-source nature
-
-The installation would now be:
-```bash
-bun add @zksdk/merkle
-```
-
-And imports would be:
-```typescript
-import { ZkMerkle } from '@zksdk/merkle';
-```
