@@ -1,10 +1,9 @@
-import { ZkMerkle } from '../ZkMerkle';  // Changed from '../index' to direct importimport path from 'path';
+import { ZkMerkle } from '../ZkMerkle';
 
 async function main() {
   const prover = new ZkMerkle();
 
   try {
-    // Define your leaves
     const leaves = ['a', 'b', 'c', 'd', 'e'];
     const leafToProve = 'a';
 
@@ -21,6 +20,9 @@ async function main() {
     const isValid = await prover.verifyProof(proof, publicSignals, depth);
 
     console.log(`\n✅ Proof verification: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+    
+    // Add explicit exit
+    process.exit(isValid ? 0 : 1);  // Exit with 0 if successful, 1 if failed
   } catch (error) {
     console.error('\n❌ Error:', error);
     process.exit(1);
