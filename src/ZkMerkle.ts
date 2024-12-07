@@ -3,6 +3,17 @@ import path from 'path';
 import fs from 'fs';
 const { buildMimcSponge } = require('circomlibjs');
 
+interface ZkConfig {
+  baseDir?: string;
+  circuits?: {
+    wasmDir?: string;
+    zkeyDir?: string;
+    verificationDir?: string;
+  };
+  templatesDir?: string;
+  maxDepth?: number;
+}
+
 interface ProofOutput {
   proof: any;
   publicSignals: string[];
@@ -11,11 +22,38 @@ interface ProofOutput {
 
 export class ZkMerkle {
   private mimcSponge: any;
-  private MAX_SUPPORTED_DEPTH = 15;
-  private wasmDir = path.join(__dirname, 'merkleTreeProof');
+  private readonly MAX_SUPPORTED_DEPTH: number;
+  private readonly CONFIG_DIRS: {
+    wasm: string;
+    zkey: string;
+    verification: string;
+    templates: string;
+  };
 
-  constructor() {
+  constructor(config?: ZkConfig) {
+    const projectRoot = path.resolve(__dirname, '..');
+    const baseDir = config?.baseDir ?? path.join(projectRoot, 'zkConfig');
+    const circuitsDir = path.join(baseDir, 'circuits');
+    
+    this.MAX_SUPPORTED_DEPTH = config?.maxDepth ?? 15;
+    this.CONFIG_DIRS = {
+      wasm: config?.circuits?.wasmDir ?? path.join(circuitsDir, 'wasm'),
+      zkey: config?.circuits?.zkeyDir ?? path.join(circuitsDir, 'zkey'),
+      verification: config?.circuits?.verificationDir ?? path.join(circuitsDir, 'verification'),
+      templates: config?.templatesDir ?? path.join(baseDir, 'templates')
+    };
+
+    this.validateDirectories();
     this.initMimc();
+  }
+
+  private validateDirectories() {
+    Object.entries(this.CONFIG_DIRS).forEach(([key, dir]) => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory: ${dir}`);
+      }
+    });
   }
 
   private async initMimc() {
@@ -53,6 +91,16 @@ export class ZkMerkle {
     const rightInput = this.toField(right);
     const hash = this.mimcSponge.multiHash([leftInput, rightInput], 0);
     return this.mimcSponge.F.toString(hash);
+  }
+
+  private getCircuitPath(depth: number, type: 'wasm' | 'zkey' | 'verification'): string {
+    const circuitName = `MerkleTreeProof_${depth}`;
+    const dirMap = {
+      wasm: path.join(this.CONFIG_DIRS.wasm, `${circuitName}.wasm`),
+      zkey: path.join(this.CONFIG_DIRS.zkey, `${circuitName}_final.zkey`),
+      verification: path.join(this.CONFIG_DIRS.verification, `${circuitName}_verification_key.json`)
+    };
+    return dirMap[type];
   }
 
   public async generateMerkleProof(leaf: string, allLeaves: string[]): Promise<ProofOutput> {
@@ -104,15 +152,8 @@ export class ZkMerkle {
       root,
     };
 
-    const circuitName = `MerkleTreeProof_${depth}`;
-    const wasmPath = path.join(
-      __dirname,
-      'merkleTreeProof',
-      `${circuitName}_js`,
-      `${circuitName}.wasm`
-    );
-    
-    const zkeyPath = path.join(__dirname, 'merkleTreeProof', `${circuitName}_final.zkey`);
+    const wasmPath = this.getCircuitPath(depth, 'wasm');
+    const zkeyPath = this.getCircuitPath(depth, 'zkey');
 
     if (!fs.existsSync(wasmPath)) {
       throw new Error(`WASM file for depth ${depth} not found at ${wasmPath}`);
@@ -122,16 +163,11 @@ export class ZkMerkle {
     }
 
     const { proof, publicSignals } = await groth16.fullProve(input, wasmPath, zkeyPath);
-
     return { proof, publicSignals, root };
   }
 
   public async verifyProof(proof: any, publicSignals: string[], depth: number): Promise<boolean> {
-    const vKeyPath = path.join(
-      __dirname,
-      'merkleTreeProof',
-      `MerkleTreeProof_${depth}_verification_key.json`
-    );
+    const vKeyPath = this.getCircuitPath(depth, 'verification');
     if (!fs.existsSync(vKeyPath)) {
       throw new Error(`Verification key for depth ${depth} not found at ${vKeyPath}`);
     }
@@ -143,22 +179,19 @@ export class ZkMerkle {
     if (depth > this.MAX_SUPPORTED_DEPTH) {
       throw new Error(`Depth ${depth} exceeds maximum supported depth of ${this.MAX_SUPPORTED_DEPTH}`);
     }
-  
-    const circuitName = `MerkleTreeProof_${depth}`;
-    const zkeyPath = path.join(__dirname, 'merkleTreeProof', `${circuitName}_final.zkey`);
-  
+
+    const zkeyPath = this.getCircuitPath(depth, 'zkey');
     if (!fs.existsSync(zkeyPath)) {
       throw new Error(`ZKey file for depth ${depth} not found at ${zkeyPath}`);
     }
-  
-    const templates = {
-      groth16: fs.readFileSync(
-        path.join(__dirname, '..', 'templates', 'verifier_groth16.sol.ejs'),
-        'utf8'
-      )
-    };
-  
-    const solidityVerifier = await zKey.exportSolidityVerifier(zkeyPath, templates);
+
+    const templatePath = path.join(this.CONFIG_DIRS.templates, 'verifier_groth16.sol.ejs');
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`Template file not found at ${templatePath}`);
+    }
+
+    const template = fs.readFileSync(templatePath, 'utf8');
+    const solidityVerifier = await zKey.exportSolidityVerifier(zkeyPath, { groth16: template });
     return solidityVerifier;
   }
 }
