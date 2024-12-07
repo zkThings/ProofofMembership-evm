@@ -10,8 +10,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "bun test",
-    "prepublishOnly": "bun run build",
+    "test": "bun run src/test/test-proof-verify.ts",
+    "prepublishOnly": "bun run build && bun test",
     "clean": "rm -rf dist",
     "license": "ts-node scripts/generate-license.ts"
   },
@@ -19,6 +19,10 @@
     "type": "git",
     "url": "git+https://github.com/zkThings/zkSDK.git"
   },
+  "bugs": {
+    "url": "https://github.com/zkThings/zkSDK/issues"
+  },
+  "homepage": "https://zksdk.io",
   "keywords": [
     "zksdk",
     "zero-knowledge",

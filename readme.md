@@ -160,9 +160,8 @@ const zkMerkle = new ZkMerkle({
 
 ## Support
 
-- [Documentation](https://docs.zksdk.org)
-- [Discord](https://discord.gg/zksdk)
-- [GitHub Issues](https://github.com/zksdk/zk-merkle/issues)
+- [Documentation](https://docs.zksdk.io)
+- [GitHub Issues](https://github.com/zkthings/zksdk/issues)
 
 ## License
 
