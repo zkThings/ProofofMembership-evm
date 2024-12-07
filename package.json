@@ -1,12 +1,13 @@
 {
   "name": "@zksdk/zkmerkle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Zero Knowledge Merkle Tree SDK - Part of zkSDK ecosystem for simplified ZK development",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "templates"
+    "templates",
+    "zkConfig"
   ],
   "scripts": {
     "build": "tsc",
