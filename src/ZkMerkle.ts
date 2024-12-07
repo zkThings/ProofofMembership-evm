@@ -30,18 +30,33 @@ export class ZkMerkle {
     templates: string;
   };
 
-  constructor(config?: ZkConfig) {
-    const projectRoot = path.resolve(__dirname, '..');
-    const baseDir = config?.baseDir ?? path.join(projectRoot, 'zkConfig');
-    const circuitsDir = path.join(baseDir, 'circuits');
-    
-    this.MAX_SUPPORTED_DEPTH = config?.maxDepth ?? 15;
-    this.CONFIG_DIRS = {
-      wasm: config?.circuits?.wasmDir ?? path.join(circuitsDir, 'wasm'),
-      zkey: config?.circuits?.zkeyDir ?? path.join(circuitsDir, 'zkey'),
-      verification: config?.circuits?.verificationDir ?? path.join(circuitsDir, 'verification'),
-      templates: config?.templatesDir ?? path.join(baseDir, 'templates')
-    };
+  constructor(config?: ZkConfig | string) {
+    // If config is a string, treat it as a path to zkConfig directory
+    if (typeof config === 'string') {
+      const zkConfigPath = path.resolve(process.cwd(), config);
+      const circuitsDir = path.join(zkConfigPath, 'circuits');
+      
+      this.MAX_SUPPORTED_DEPTH = 15;
+      this.CONFIG_DIRS = {
+        wasm: path.join(circuitsDir, 'wasm'),
+        zkey: path.join(circuitsDir, 'zkey'),
+        verification: path.join(circuitsDir, 'verification'),
+        templates: path.join(zkConfigPath, 'templates')
+      };
+    } else {
+      // Original config object behavior
+      const projectRoot = path.resolve(__dirname, '..');
+      const baseDir = config?.baseDir ?? path.join(projectRoot, 'zkConfig');
+      const circuitsDir = path.join(baseDir, 'circuits');
+      
+      this.MAX_SUPPORTED_DEPTH = config?.maxDepth ?? 15;
+      this.CONFIG_DIRS = {
+        wasm: config?.circuits?.wasmDir ?? path.join(circuitsDir, 'wasm'),
+        zkey: config?.circuits?.zkeyDir ?? path.join(circuitsDir, 'zkey'),
+        verification: config?.circuits?.verificationDir ?? path.join(circuitsDir, 'verification'),
+        templates: config?.templatesDir ?? path.join(baseDir, 'templates')
+      };
+    }
 
     this.validateDirectories();
     this.initMimc();

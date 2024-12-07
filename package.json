@@ -6,8 +6,7 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "templates",
-    "merkleTreeProof"
+    "templates"
   ],
   "scripts": {
     "build": "tsc",

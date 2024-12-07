@@ -1,50 +1,31 @@
-# Node modules
+# Dependencies
 node_modules/
+.env
+
+# Build outputs
+dist/
+build/
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
 
 # Logs
-logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Build output
-dist/
-build/
-
-# Dependency directories
-jspm_packages/
-
-# IDE and editor files
-.idea/
-.vscode/
-*.sublime-project
-*.sublime-workspace
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Coverage directory used by tools like istanbul
+# Test coverage
 coverage/
 
-# Miscellaneous
-*.tgz
-*.zip
+# Temporary files
+*.tmp
+.cache/
 
-
-# Generated files from index.ts script
-src/powersOfTau12.ptau
-src/powersOfTau12_final.ptau
-src/circuit_0000.zkey
-src/circuit_0001.zkey
-src/merkleTreeProof_final.zkey
-src/temp_final.zkey
-src/merkleTreeProof_verification_key.json
+# zkConfig artifacts (if you want to ignore generated files)
+zkConfig/**/pot/*.ptau
+zkConfig/**/verification/*.json

@@ -1,10 +1,10 @@
-import { MerkleProver } from '../index';
+import { ZkMerkle } from '../index';
 import fs from 'fs';
 import path from 'path';
 
 async function testVerifierExport() {
   try {
-    const prover = new MerkleProver();
+    const prover = new ZkMerkle();
     
     // Test with depth 10
     const verifierCode = await prover.exportVerifierContract(10);
