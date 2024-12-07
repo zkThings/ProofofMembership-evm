@@ -26,6 +26,5 @@ coverage/
 *.tmp
 .cache/
 
-# zkConfig artifacts (if you want to ignore generated files)
+# Only ignore ptau files but keep verification files
 zkConfig/**/pot/*.ptau
-zkConfig/**/verification/*.json
