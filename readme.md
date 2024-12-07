@@ -15,7 +15,12 @@ This package helps you work with Merkle Trees that have zero-knowledge capabilit
 ## Installation
 
 ```bash
-bun add @zksdk/zk-merkle
+bun add zkmerkle
+
+or 
+
+npm i zkmerkle
+
 ```
 
 ## Basic Usage
