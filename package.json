@@ -1,5 +1,5 @@
 {
-  "name": "@zksdk/zkmerkle",
+  "name": "zkmerkle",
   "version": "0.1.1",
   "description": "Zero Knowledge Merkle Tree SDK - Part of zkSDK ecosystem for simplified ZK development",
   "main": "dist/index.js",
@@ -37,14 +37,14 @@
   "license": "MIT",
   "dependencies": {
     "circomlibjs": "^0.1.7",
-    "snarkjs": "^0.7.5",
-    "ffjavascript": "^0.3.1"
+    "ffjavascript": "^0.3.1",
+    "snarkjs": "^0.7.5"
   },
   "devDependencies": {
-    "@types/node": "^20.10.4",  
-    "typescript": "^5.5.4",
+    "@types/node": "^20.10.4",
+    "@types/snarkjs": "^0.7.8",
     "ts-node": "^10.9.2",
-    "@types/snarkjs": "^0.7.8"
+    "typescript": "^5.5.4"
   },
   "publishConfig": {
     "access": "public"

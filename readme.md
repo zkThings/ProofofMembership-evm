@@ -26,19 +26,27 @@ npm i zkmerkle
 ## Basic Usage
 
 ```typescript
-import { ZkMerkle } from '@zksdk/zk-merkle';
+import { ZkMerkle } from 'zkmerkle';
 
 // Create a new ZK Merkle Tree
 const zkMerkle = new ZkMerkle();
 
 // Add some data to your tree
-const myData = ['apple', 'banana', 'orange', 'grape'];
+const myData = ['apple', 'banana', 'orange', 'grape', 'mango'];
+
+// Calculate tree depth
+const depth = Math.ceil(Math.log2(myData.length));
 
 // Generate a proof
-const proof = await zkMerkle.generateMerkleProof('apple', myData);
+const { proof, publicSignals, root } = await zkMerkle.generateMerkleProof('apple', myData);
+
+console.log('Merkle Root:', root);
+console.log('Proof:', JSON.stringify(proof, null, 2));
+console.log('Public Signals:', publicSignals);
 
 // Verify the proof
-const isValid = await zkMerkle.verifyProof(proof.proof, proof.publicSignals, 3);
+const isValid = await zkMerkle.verifyProof(proof, publicSignals, depth);
+console.log(`Proof verification: ${isValid ? 'SUCCESS' : 'FAILED'}`);
 ```
 
 ## Understanding Trusted Setup
