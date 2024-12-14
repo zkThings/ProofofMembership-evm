@@ -47,6 +47,11 @@ console.log('Public Signals:', publicSignals);
 // Verify the proof
 const isValid = await zkMerkle.verifyProof(proof, publicSignals, depth);
 console.log(`Proof verification: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+
+// Export Solidity verifier contract
+const verifierContract = await zkMerkle.exportVerifierContract(depth);
+console.log('Solidity Verifier Contract:', verifierContract);
+
 ```
 
 ## Understanding Trusted Setup
@@ -178,4 +183,4 @@ const zkMerkle = new ZkMerkle({
 
 ## License
 
-MIT © [zkSDK Team](https://github.com/zksdk)
+MIT © [zkSDK Team](https://github.com/zkthings/zksdk)

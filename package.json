@@ -1,6 +1,6 @@
 {
   "name": "zkmerkle",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Zero Knowledge Merkle Tree SDK - Part of zkSDK ecosystem for simplified ZK development",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
