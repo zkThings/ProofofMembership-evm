@@ -1,4 +1,4 @@
-# @zksdk/zk-merkle
+# zkmerkle
 
 Zero-Knowledge Merkle Trees with support for custom trusted setups.
 
@@ -70,7 +70,7 @@ The setup happens in two phases:
 
 #### Coordinator Role
 ```typescript
-import { PowerOfTau } from '@zksdk/zk-merkle';
+import { PowerOfTau } from 'zk-merkle';
 
 async function coordinatorSetup() {
   const ceremony = new PowerOfTau(15);  // For trees up to depth 15
