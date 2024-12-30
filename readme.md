@@ -33,7 +33,8 @@ import { ZkMerkleTree } from '@zkthings/merkle-evm';
 const zkMerkle = new ZkMerkleTree();
 
 // Add data and generate proof
-const values = ['hello', 'world', 'test'];
+const values = [‘Dragon Tree’, ‘Olive’ , ‘Linden’]
+
 const { proof, publicSignals } = await zkMerkle.generateMerkleProof(
   values,
   'world'
