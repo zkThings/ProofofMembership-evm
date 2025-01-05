@@ -1,7 +1,7 @@
 {
-  "name": "zkmerkle",
-  "version": "0.1.3",
-  "description": "Zero Knowledge Merkle Tree SDK - Part of zkSDK ecosystem for simplified ZK development",
+  "name": "@zkthings/proof-membership-evm",
+  "version": "0.1.40",
+  "description": "Proof of Membership for EVM - Part of zkSDK ecosystem for simplified ZK development",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -18,19 +18,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zkThings/zkSDK.git"
+    "url": "git+https://github.com/zkThings/proofOfMembership-evm.git"
   },
   "bugs": {
-    "url": "https://github.com/zkThings/zkSDK/issues"
+    "url": "https://github.com/zkThings/proofOfMembership-evm/issues"
   },
   "homepage": "https://zksdk.io",
   "keywords": [
     "zksdk",
     "zero-knowledge",
-    "merkle-tree",
-    "zk-proof",
-    "circom",
-    "snarkjs",
+    "proof-of-membership",
+    "evm",
     "cryptography"
   ],
   "author": "Saeed Dawod",
@@ -41,7 +39,7 @@
     "snarkjs": "^0.7.5"
   },
   "devDependencies": {
-    "@types/node": "^20.10.4",
+    "@types/node": "^22.10.5",
     "@types/snarkjs": "^0.7.8",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"

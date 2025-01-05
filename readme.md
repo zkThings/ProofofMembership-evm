@@ -1,4 +1,4 @@
-# @zkthings/merkle-evm
+# @zkthings/proof-membership-evm
 
 Zero-Knowledge Merkle Trees implementation using circom circuits and snarkjs, designed for EVM chains.
 
@@ -19,15 +19,15 @@ Zero-Knowledge Merkle Trees implementation using circom circuits and snarkjs, de
 ## Installation
 
 ```bash
-bun add @zkthings/merkle-evm
+bun add @zkthings/proof-membership-evm
 # or
-npm install @zkthings/merkle-evm
+npm install @zkthings/proof-membership-evm
 ```
 
 ## Quick Start
 
 ```typescript
-import { ZkMerkleTree } from '@zkthings/merkle-evm';
+import { ZkMerkleTree } from '@zkthings/proof-membership-evm'
 
 // Create a new ZK Merkle Tree
 const zkMerkle = new ZkMerkleTree();
@@ -37,7 +37,7 @@ const values = [‘Dragon Tree’, ‘Olive’ , ‘Linden’]
 
 const { proof, publicSignals } = await zkMerkle.generateMerkleProof(
   values,
-  'world'
+  'Olive'
 );
 
 // Verify off-chain (for testing)
@@ -52,7 +52,7 @@ const verifierContract = await zkMerkle.exportVerifierContract();
 ### Trusted Setup
 
 ```typescript
-import { PowerOfTau } from '@zkthings/merkle-evm';
+import { PowerOfTau } from '@zkthings/proof-membership-evm'
 
 // Initialize ceremony
 const ceremony = new PowerOfTau(15);  // For trees up to depth 15
@@ -68,7 +68,6 @@ await ceremony.finalizeCircuit('MerkleTreeProof');
 // Use custom ceremony output
 const zkMerkle = new ZkMerkleTree({
   baseDir: './production-zkconfig',
-  maxDepth: 20
 });
 
 // Deploy verifier contract
@@ -148,9 +147,9 @@ PRs welcome! Check our [Contributing Guide](CONTRIBUTING.md).
 
 ## Support
 
-- [Documentation](https://docs.zksdk.io)
+- [Documentation](https://zksdk.io)
 - [Discord](https://discord.gg/zkthings)
-- [GitHub Issues](https://github.com/zkthings/merkle-evm/issues)
+- [GitHub Issues](https://github.com/zkthings/proofmembership-evm/issues)
 
 ## License
 
