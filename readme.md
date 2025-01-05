@@ -1,186 +1,157 @@
-# zkmerkle
+# @zkthings/merkle-evm
 
-Zero-Knowledge Merkle Trees with support for custom trusted setups.
+Zero-Knowledge Merkle Trees implementation using circom circuits and snarkjs, designed for EVM chains.
 
-> ⚠️ **Note**: This is an early stage project. API may change as we improve it.
+> 🚀 Part of the zkSDK ecosystem - Simplified ZK development
 
-## What is this?
+⚠️ **Early Stage Project**: This package is under active development. APIs may change as we improve the implementation.
 
-This package helps you work with Merkle Trees that have zero-knowledge capabilities:
-- Prove membership without revealing the path or location
-- Generate and verify zero-knowledge proofs
-- Create and manage your own trusted setup
-- Export Solidity verifier contracts
+🔗 **Need Mina Integration?** Check out our Mina Protocol implementation at [zkSDK.io](https://zksdk.io)
+
+## Features
+
+- 🌳 ZK Merkle Tree with native EVM integration
+- 🌲 Fast off-chain proof generation
+- 🎋 On-chain verification
+- 🌴 Custom trusted setup support
+- 📦 Built on circom & snarkjs
 
 ## Installation
 
 ```bash
-bun add zkmerkle
-
-or 
-
-npm i zkmerkle
-
+bun add @zkthings/merkle-evm
+# or
+npm install @zkthings/merkle-evm
 ```
 
-## Basic Usage
+## Quick Start
 
 ```typescript
-import { ZkMerkle } from 'zkmerkle';
+import { ZkMerkleTree } from '@zkthings/merkle-evm';
 
 // Create a new ZK Merkle Tree
-const zkMerkle = new ZkMerkle();
+const zkMerkle = new ZkMerkleTree();
 
-// Add some data to your tree
-const myData = ['apple', 'banana', 'orange', 'grape', 'mango'];
+// Add data and generate proof
+const values = [‘Dragon Tree’, ‘Olive’ , ‘Linden’]
 
-// Calculate tree depth
-const depth = Math.ceil(Math.log2(myData.length));
+const { proof, publicSignals } = await zkMerkle.generateMerkleProof(
+  values,
+  'world'
+);
 
-// Generate a proof
-const { proof, publicSignals, root } = await zkMerkle.generateMerkleProof('apple', myData);
+// Verify off-chain (for testing)
+const isValidOffChain = await zkMerkle.verifyProofOffChain(proof, publicSignals);
 
-console.log('Merkle Root:', root);
-console.log('Proof:', JSON.stringify(proof, null, 2));
-console.log('Public Signals:', publicSignals);
-
-// Verify the proof
-const isValid = await zkMerkle.verifyProof(proof, publicSignals, depth);
-console.log(`Proof verification: ${isValid ? 'SUCCESS' : 'FAILED'}`);
-
-// Export Solidity verifier contract
-const verifierContract = await zkMerkle.exportVerifierContract(depth);
-console.log('Solidity Verifier Contract:', verifierContract);
-
+// Export and deploy verifier contract
+const verifierContract = await zkMerkle.exportVerifierContract();
 ```
 
-## Understanding Trusted Setup
+## Production Usage
 
-### What is a Trusted Setup?
+### Trusted Setup
 
-A trusted setup is a crucial security process that creates the cryptographic parameters needed for zero-knowledge proofs. It requires multiple participants to ensure no single party has access to the complete setup information.
-
-### The Setup Process
-
-The setup happens in two phases:
-1. Phase 1 (Powers of Tau): General setup that can be reused
-2. Phase 2: Circuit-specific setup for Merkle Tree operations
-
-### Running a Setup Ceremony
-
-#### Coordinator Role
 ```typescript
-import { PowerOfTau } from 'zk-merkle';
+import { PowerOfTau } from '@zkthings/merkle-evm';
 
-async function coordinatorSetup() {
-  const ceremony = new PowerOfTau(15);  // For trees up to depth 15
-  
-  // 1. Initialize ceremony
-  const ptauFile = await ceremony.initCeremony();
-  
-  // 2. Share ptauFile with first participant
-  // Coordinator must send the file to Participant 1
-  
-  // 3. After receiving final contribution
-  await ceremony.finalizeCeremony();
-  
-  // 4. Set up Merkle Tree circuit
-  await ceremony.initPhase2('MerkleTreeProof');
-  await ceremony.finalizeCircuit('MerkleTreeProof');
-}
+// Initialize ceremony
+const ceremony = new PowerOfTau(15);  // For trees up to depth 15
+const ptauFile = await ceremony.initCeremony();
+
+// Generate production parameters
+await ceremony.finalizeCeremony();
+await ceremony.finalizeCircuit('MerkleTreeProof');
 ```
 
-#### Participant Role
+### Production Deployment
 ```typescript
-async function participantContribution(ptauFile: string, participantNumber: number) {
-  const ceremony = new PowerOfTau(15);
-  
-  // 1. Import the previous contribution
-  await ceremony.importContribution(ptauFile);
-  
-  // 2. Add contribution
-  const newPtau = await ceremony.contributePhase1(`Participant ${participantNumber}`);
-  
-  // 3. Send newPtau to next participant or back to coordinator
-  // Participant must manually send the file to the next person
-}
+// Use custom ceremony output
+const zkMerkle = new ZkMerkleTree({
+  baseDir: './production-zkconfig',
+  maxDepth: 20
+});
+
+// Deploy verifier contract
+const verifierContract = await zkMerkle.exportVerifierContract();
 ```
 
-### File Exchange Process
-
-1. Coordinator → Participant 1:
-   - Sends initial `pot15_0000.ptau`
-
-2. Participant 1 → Participant 2:
-   - Contributes and sends `pot15_0001.ptau`
-
-3. Participant 2 → Participant 3:
-   - Contributes and sends `pot15_0002.ptau`
-
-4. Final Participant → Coordinator:
-   - Sends final contribution
-   - Coordinator finalizes ceremony
-
-## Directory Structure
+## Architecture
 
 ```
-📁 zkConfig/                # Configuration directory
-├── 📁 ceremony/           
-│   └── 📁 pot/           # Trusted setup files
-├── 📁 circuits/          
-│   ├── 📁 wasm/          # Circuit files
-│   ├── 📁 zkey/          # Proving keys
-│   └── 📁 verification/  # Verification keys
-└── 📁 templates/         # Smart contract templates
+📦 @zkthings/merkle-evm
+├── core/             # Core Merkle Tree implementation
+├── circuits/         # Circom circuit definitions
+├── contracts/        # Solidity verifier contracts
+└── ceremony/         # Trusted setup utilities
 ```
 
-## Usage Options
+## Best Practices
 
-### 1. Testing Environment (Pre-built Setup)
+### Local Development
 ```typescript
-// Uses included test setup
-const zkMerkle = new ZkMerkle();
+// Fast local testing
+const zkMerkle = new ZkMerkleTree();
+const isValid = await zkMerkle.verifyProofOffChain(proof, publicSignals);
 ```
 
-### 2. Production Environment (Custom Setup)
+### Production Setup
 ```typescript
-// Use your ceremony output
-const zkMerkle = new ZkMerkle('./production-zkconfig');
-```
-
-### 3. Custom Configuration
-```typescript
-const zkMerkle = new ZkMerkle({
-  baseDir: './my-setup',
-  maxDepth: 20,
-  circuits: {
-    wasmDir: './my-circuits',
-    zkeyDir: './my-keys',
-    verificationDir: './my-verifiers'
-  }
+// Secure production configuration
+const zkMerkle = new ZkMerkleTree({
+  baseDir: './production-zkconfig',
+  maxDepth: 20
 });
 ```
 
-## Important Notes
+## Security Considerations
 
-1. **Testing vs Production**
-   - Testing: Use built-in setup
-   - Production: Create custom setup with multiple participants
+1. **Trusted Setup**
+   - Multiple participants required
+   - Secure randomness for contributions
+   - Verify ceremony completion
 
-2. **Tree Depth**
-   - Default maximum: 15 (32,768 items)
-   - Configurable through custom setup
+2. **Contract Deployment**
+   - Audit generated verifier
+   - Test thoroughly on testnet
+   - Monitor gas costs
 
-3. **Security Considerations**
-   - Multiple participants improve security
-   - Each participant must keep their randomness secret
-   - Coordinator should verify contributions
+3. **Verification**
+   - Always verify on-chain in production
+   - Use off-chain for testing only
+   - Validate all proof components
+
+## API Reference
+
+### ZkMerkleTree
+```typescript
+class ZkMerkleTree {
+  constructor(config?: ZkConfig);
+  generateMerkleProof(values: string[], valueToProve: string): Promise<ProofData>;
+  verifyProofOffChain(proof: Proof, publicSignals: PublicSignals): Promise<boolean>;
+  exportVerifierContract(): Promise<string>;
+}
+```
+
+### PowerOfTau
+```typescript
+class PowerOfTau {
+  constructor(depth: number);
+  initCeremony(): Promise<string>;
+  finalizeCeremony(): Promise<void>;
+  finalizeCircuit(name: string): Promise<void>;
+}
+```
+
+## Contributing
+
+PRs welcome! Check our [Contributing Guide](CONTRIBUTING.md).
 
 ## Support
 
 - [Documentation](https://docs.zksdk.io)
-- [GitHub Issues](https://github.com/zkthings/zksdk/issues)
+- [Discord](https://discord.gg/zkthings)
+- [GitHub Issues](https://github.com/zkthings/merkle-evm/issues)
 
 ## License
 
-MIT © [zkSDK Team](https://github.com/zkthings/zksdk)
+MIT © [zkThings](https://github.com/zkthings)
