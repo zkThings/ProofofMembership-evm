@@ -77,7 +77,7 @@ const verifierContract = await zkMerkle.exportVerifierContract();
 ## Architecture
 
 ```
-📦 @zkthings/merkle-evm
+📦 @zkthings/proof-membership-evm
 ├── core/             # Core Merkle Tree implementation
 ├── circuits/         # Circom circuit definitions
 ├── contracts/        # Solidity verifier contracts
@@ -98,7 +98,6 @@ const isValid = await zkMerkle.verifyProofOffChain(proof, publicSignals);
 // Secure production configuration
 const zkMerkle = new ZkMerkleTree({
   baseDir: './production-zkconfig',
-  maxDepth: 20
 });
 ```
 
@@ -114,32 +113,6 @@ const zkMerkle = new ZkMerkleTree({
    - Test thoroughly on testnet
    - Monitor gas costs
 
-3. **Verification**
-   - Always verify on-chain in production
-   - Use off-chain for testing only
-   - Validate all proof components
-
-## API Reference
-
-### ZkMerkleTree
-```typescript
-class ZkMerkleTree {
-  constructor(config?: ZkConfig);
-  generateMerkleProof(values: string[], valueToProve: string): Promise<ProofData>;
-  verifyProofOffChain(proof: Proof, publicSignals: PublicSignals): Promise<boolean>;
-  exportVerifierContract(): Promise<string>;
-}
-```
-
-### PowerOfTau
-```typescript
-class PowerOfTau {
-  constructor(depth: number);
-  initCeremony(): Promise<string>;
-  finalizeCeremony(): Promise<void>;
-  finalizeCircuit(name: string): Promise<void>;
-}
-```
 
 ## Contributing
 
@@ -148,7 +121,6 @@ PRs welcome! Check our [Contributing Guide](CONTRIBUTING.md).
 ## Support
 
 - [Documentation](https://zksdk.io)
-- [Discord](https://discord.gg/zkthings)
 - [GitHub Issues](https://github.com/zkthings/proofmembership-evm/issues)
 
 ## License
