@@ -10,11 +10,11 @@ Zero-Knowledge Merkle Trees implementation using circom circuits and snarkjs, de
 
 ## Features
 
-- 🌳 ZK Merkle Tree with native EVM integration
-- 🌲 Fast off-chain proof generation
-- 🎋 On-chain verification
-- 🌴 Custom trusted setup support
-- 📦 Built on circom & snarkjs
+-  ZK Merkle Tree with native EVM integration
+-  Fast off-chain proof generation
+-  On-chain verification
+-  Custom trusted setup support
+-  Built on circom & snarkjs
 
 ## Installation
 
