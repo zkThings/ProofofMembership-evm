@@ -27,10 +27,10 @@ npm install @zkthings/proof-membership-evm
 ## Quick Start
 
 ```typescript
-import { ZkMerkleTree } from '@zkthings/proof-membership-evm'
+import { ZkMerkle } from '@zkthings/proof-membership-evm'
 
 // Create a new ZK Merkle Tree
-const zkMerkle = new ZkMerkleTree();
+const zkMerkle = new ZkMerkle();
 
 // Add data and generate proof
 const values = [‘Dragon Tree’, ‘Olive’ , ‘Linden’]
@@ -41,7 +41,7 @@ const { proof, publicSignals } = await zkMerkle.generateMerkleProof(
 );
 
 // Verify off-chain (for testing)
-const isValidOffChain = await zkMerkle.verifyProofOffChain(proof, publicSignals);
+const isValidOffChain = await zkMerkle.verifyProof(proof, publicSignals);
 
 // Export and deploy verifier contract
 const verifierContract = await zkMerkle.exportVerifierContract();
